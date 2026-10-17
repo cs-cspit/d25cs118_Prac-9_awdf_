@@ -35,6 +35,10 @@ const taskSchema = new mongoose.Schema({
   }
 });
 
+// Query optimization: compound index matching GET /tasks
+// (filter by user, sort by newest first) so MongoDB avoids an in-memory sort.
+taskSchema.index({ user: 1, createdAt: -1 });
+
 // Pre-save hook: automatically trim whitespace from the title field
 taskSchema.pre('save', function (next) {
   if (this.title) {

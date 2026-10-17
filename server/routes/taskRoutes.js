@@ -1,6 +1,7 @@
 import express from 'express';
 import Task from '../models/Task.js';
 import protect from '../middleware/auth.js';
+import cache, { allTasksKey, invalidateTasks, isCacheEnabled, taskKey } from '../config/cache.js';
 import { validateTaskId, validateTaskBody } from '../middleware/validation.js';
 
 const router = express.Router();
@@ -23,10 +24,27 @@ const sendMongooseValidation = (res, err) => {
 };
 
 // GET all tasks of the logged-in user
+// Cache check -> HIT: return cached data | MISS: query MongoDB, store, return
 router.get('/', async (req, res, next) => {
   try {
-    const tasks = await Task.find({ user: req.user.id }).sort({ createdAt: -1 });
-    console.log(`Fetching all tasks for user ${req.user.id}`);
+    const key = allTasksKey(req.user.id);
+
+    if (isCacheEnabled()) {
+      const cached = cache.get(key);
+      if (cached) {
+        res.set('X-Cache', 'HIT');
+        return res.status(200).json(cached);
+      }
+    }
+
+    // lean() returns plain JS objects instead of full Mongoose documents:
+    // faster to build, smaller in memory, and safe to keep in the cache.
+    // The { user, createdAt } compound index on Task serves this query + sort.
+    const tasks = await Task.find({ user: req.user.id }).sort({ createdAt: -1 }).lean();
+    console.log(`Cache MISS - fetched ${tasks.length} tasks from MongoDB for user ${req.user.id}`);
+
+    if (isCacheEnabled()) cache.set(key, tasks);
+    res.set('X-Cache', isCacheEnabled() ? 'MISS' : 'DISABLED');
     res.status(200).json(tasks);
   } catch (err) {
     next(err);
@@ -34,9 +52,20 @@ router.get('/', async (req, res, next) => {
 });
 
 // GET a specific task by ID (only if it belongs to the user)
+// Cached separately from the all-tasks list under its own key
 router.get('/:id', validateTaskId, async (req, res, next) => {
   try {
-    const task = await Task.findOne({ _id: req.params.id, user: req.user.id });
+    const key = taskKey(req.user.id, req.params.id);
+
+    if (isCacheEnabled()) {
+      const cached = cache.get(key);
+      if (cached) {
+        res.set('X-Cache', 'HIT');
+        return res.status(200).json(cached);
+      }
+    }
+
+    const task = await Task.findOne({ _id: req.params.id, user: req.user.id }).lean();
 
     if (!task) {
       return res.status(404).json({
@@ -45,7 +74,10 @@ router.get('/:id', validateTaskId, async (req, res, next) => {
       });
     }
 
-    console.log(`Fetching task with ID: ${req.params.id}`);
+    console.log(`Cache MISS - fetched task ${req.params.id} from MongoDB`);
+
+    if (isCacheEnabled()) cache.set(key, task);
+    res.set('X-Cache', isCacheEnabled() ? 'MISS' : 'DISABLED');
     res.status(200).json(task);
   } catch (err) {
     next(err);
@@ -66,6 +98,9 @@ router.post('/', validateTaskBody, async (req, res, next) => {
     });
 
     console.log(`Task created with ID: ${newTask._id}`);
+
+    // Write succeeded -> the cached list is now stale
+    invalidateTasks(req.user.id);
 
     res.status(201).json({
       message: 'Task created successfully',
@@ -101,6 +136,7 @@ router.put('/:id', validateTaskId, validateTaskBody, async (req, res, next) => {
     const updatedTask = await task.save();
 
     console.log(`Task updated with ID: ${req.params.id}`);
+    invalidateTasks(req.user.id, req.params.id);
     res.status(200).json({
       message: 'Task updated successfully',
       task: updatedTask
@@ -124,6 +160,7 @@ router.delete('/:id', validateTaskId, async (req, res, next) => {
     }
 
     console.log(`Task deleted with ID: ${req.params.id}`);
+    invalidateTasks(req.user.id, req.params.id);
 
     res.status(200).json({
       message: 'Task deleted successfully',

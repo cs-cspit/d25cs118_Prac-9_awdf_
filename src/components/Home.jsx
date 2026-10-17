@@ -7,20 +7,20 @@ function Home() {
   return (
     <section className="section section-hero">
       <div className="hero-copy">
-        <p className="eyebrow">Welcome to Practical 8</p>
+        <p className="eyebrow">Welcome to Practical 9</p>
         <h1>
-          Lazy Loading &amp; <span className="gradient-text">Code Splitting</span>
+          In-Memory <span className="gradient-text">Caching</span>
         </h1>
         <p className="section-intro">
-          The Task Manager from Practicals 6–7, optimized with route-based code
-          splitting using React.lazy() and Suspense.
+          The Task Manager API now answers repeated reads from memory using
+          node-cache, and invalidates the cache on every write.
         </p>
         <p className="hero-note">
-          Only this Home page ships in the main bundle. Tasks, Contact, Login and
-          Register are separate chunks that download the first time you visit them,
-          and the chart library behind <em>Show statistics</em> loads only when you
-          open it. Open DevTools → Network, throttle to Slow 3G and click around to
-          watch each chunk arrive.
+          <code>GET /api/tasks</code> checks the cache first. On a <strong>HIT</strong> the
+          stored list is returned immediately; on a <strong>MISS</strong> MongoDB is queried
+          and the result is cached for 60 seconds. Any POST, PUT or DELETE deletes the
+          affected keys so stale data is never served. Every response carries
+          <code> X-Cache</code> and <code>X-Response-Time</code> headers.
         </p>
         <p className="hero-note">
           {user ? (
@@ -32,14 +32,13 @@ function Home() {
         <div className="feature-list">
           <p>✨ Key Features:</p>
           <ul>
-            <li>React.lazy() + dynamic import() for 4 route components</li>
-            <li>One Suspense boundary around the Routes block (navbar stays visible)</li>
-            <li>Skeleton fallback shown only after 300ms — no flicker on fast networks</li>
-            <li>Error boundary with Retry if a chunk fails to download</li>
-            <li>recharts statistics lazy-loaded on demand (381 kB chunk kept out of first load)</li>
-            <li>React.memo + useCallback remove needless TaskList re-renders while typing</li>
-            <li>Initial JS: 632.8 kB → 238.2 kB (−62%)</li>
-            <li>Still includes JWT auth from Practical 7</li>
+            <li>node-cache with a 60s TTL on GET /api/tasks (per-user key)</li>
+            <li>GET /api/tasks/:id cached separately under its own key</li>
+            <li>Cache invalidated on every POST / PUT / DELETE</li>
+            <li>GET /api/cache/stats — hit / miss counters debug endpoint</li>
+            <li>Compound index {'{ user: 1, createdAt: -1 }'} + lean() queries</li>
+            <li>Measured with 2000 tasks: ~11 ms cached vs ~35 ms uncached (server time)</li>
+            <li>Still includes lazy loading (P8) and JWT auth (P7)</li>
           </ul>
         </div>
       </div>

@@ -40,17 +40,16 @@ function Contact() {
       <div className="contact-card">
         <h3>About This Project</h3>
         <p><strong>Course:</strong> Advanced Web Development Fundamentals (AWDF)</p>
-        <p><strong>Practical:</strong> 8 — Performance Optimization and Lazy Loading in React</p>
-        <p><strong>Tech Stack:</strong> React 19, React Router 7, Vite 8, Node.js, Express 5, MongoDB, Mongoose 8, bcryptjs, jsonwebtoken, recharts (lazy)</p>
+        <p><strong>Practical:</strong> 9 — In-Memory Caching and Query Optimization</p>
+        <p><strong>Tech Stack:</strong> React 19, React Router 7, Vite 8, Node.js, Express 5, MongoDB, Mongoose 8, bcryptjs, jsonwebtoken, recharts (lazy), node-cache</p>
 
         <h3 style={{ marginTop: '30px' }}>Key Learning Outcomes</h3>
         <ul>
-          <li>Split routes into separate chunks with React.lazy() and dynamic import()</li>
-          <li>Show a Suspense fallback while a chunk downloads</li>
-          <li>Lazy-load a heavy third-party library only where it is needed</li>
-          <li>Read the Vite build output and the DevTools Network tab</li>
-          <li>Measure and explain a before/after bundle-size comparison</li>
-          <li>Find and remove an unnecessary re-render with the React Profiler</li>
+          <li>Cache API responses in memory with node-cache and a TTL</li>
+          <li>Design stable cache keys and invalidate them on every write</li>
+          <li>Measure response times empirically (cached vs uncached)</li>
+          <li>Optimize MongoDB reads with a compound index and lean()</li>
+          <li>Explain why process-local caches break with multiple server instances</li>
         </ul>
 
         <h3 style={{ marginTop: '30px' }}>Architecture</h3>
@@ -64,6 +63,8 @@ function Contact() {
           <span className="arch-badge">Auth middleware (JWT)</span>
           <span className="arch-arrow">→</span>
           <span className="arch-badge">Validation middleware</span>
+          <span className="arch-arrow">→</span>
+          <span className="arch-badge">node-cache (HIT / MISS)</span>
           <span className="arch-arrow">→</span>
           <span className="arch-badge">Mongoose ODM</span>
           <span className="arch-arrow">→</span>
